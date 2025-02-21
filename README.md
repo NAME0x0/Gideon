@@ -1,5 +1,5 @@
-# Holographic AI Face
+# Humanoid Holographic AI Face
 
-Below is a 3D rotating holographic AI face, generated using Matplotlib and updated automatically by GitHub Actions.
+Below is a 3D rotating holographic humanoid face (inspired by Gideon), automatically generated using Matplotlib and updated via GitHub Actions.
 
-![3D Rotating Holographic AI Face](hologram.gif)
+![Humanoid Holographic AI Face](hologram_humanoid.gif)
