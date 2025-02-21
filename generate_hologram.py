@@ -17,8 +17,11 @@ x = 1.2 * np.outer(np.cos(u), np.sin(v))
 y = 1.0 * np.outer(np.sin(u), np.sin(v))
 z = 1.3 * np.outer(np.ones(np.size(u)), np.cos(v))
 
+# Generate face colors
+colors = plt.cm.cool(np.outer(np.ones_like(u), np.linspace(0, 1, len(v))))
+
 # Render the surface with a translucent, cool-toned colormap for a holographic feel
-face = ax.plot_surface(x, y, z, rstride=1, cstride=1, facecolors=plt.cm.cool(0.6),
+face = ax.plot_surface(x, y, z, rstride=1, cstride=1, facecolors=colors,
                        linewidth=0, antialiased=False, alpha=0.7)
 
 # Add simple markers for eyes (two small spheres)
@@ -30,7 +33,7 @@ def add_eye(center):
     eye_y = center[1] + r * np.outer(np.sin(phi), np.sin(theta))
     eye_z = center[2] + r * np.outer(np.ones(np.size(phi)), np.cos(theta))
     ax.plot_surface(eye_x, eye_y, eye_z, color='cyan', alpha=0.9, linewidth=0)
-    
+
 # Coordinates chosen relative to the ellipsoid for the eyes
 add_eye([0.5, 0.4, 0.5])
 add_eye([-0.5, 0.4, 0.5])
