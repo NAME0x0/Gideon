@@ -1,0 +1,38 @@
+name: Generate Hologram GIF
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily; adjust as necessary
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python 3.x
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install matplotlib numpy
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+
+      - name: Generate Hologram GIF
+        run: python generate_hologram.py
+
+      - name: Commit and push updated GIF
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git add hologram.gif
+          git commit -m "Update hologram animation" || echo "No changes to commit"
+          git push
