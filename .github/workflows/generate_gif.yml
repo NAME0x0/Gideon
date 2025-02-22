@@ -29,12 +29,20 @@ jobs:
       - name: Generate Hologram GIF
         run: |
           python -X dev generate_humanoid_hologram.py
-        continue-on-error: true
+          if [ ! -f hologram_humanoid.gif ]; then
+            echo "Error: GIF file was not created"
+            exit 1
+          fi
 
       - name: Commit and push updated GIF
         run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          git add hologram_humanoid.gif
-          git commit -m "Update hologram animation" || echo "No changes to commit"
-          git push origin main || echo "No changes to push"
+          if [ -f hologram_humanoid.gif ]; then
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            git config --global user.name "github-actions[bot]"
+            git add hologram_humanoid.gif
+            git commit -m "Update hologram animation" || echo "No changes to commit"
+            git push origin main || echo "No changes to push"
+          else
+            echo "Error: GIF file not found"
+            exit 1
+          fi

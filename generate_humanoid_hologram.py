@@ -6,15 +6,23 @@ import pywavefront
 import os
 
 def create_default_face_mesh():
-    # Create a simpler pyramid as fallback
+    # Create a triangulated pyramid as fallback
     vertices = np.array([
-        [0, 0, 2],  # top
-        [-1, -1, 0], [1, -1, 0], [1, 1, 0], [-1, 1, 0]  # base
+        [0, 0, 2],    # top
+        [-1, -1, 0],  # base points
+        [1, -1, 0],
+        [1, 1, 0],
+        [-1, 1, 0]
     ])
+    # All faces as triangles
     faces = np.array([
-        [0, 1, 2], [0, 2, 3], [0, 3, 4], [0, 4, 1],  # sides
-        [1, 2, 3, 4]  # base
-    ])
+        [0, 1, 2],  # side triangles
+        [0, 2, 3],
+        [0, 3, 4],
+        [0, 4, 1],
+        [1, 2, 3],  # base triangles
+        [1, 3, 4]
+    ], dtype=np.int32)
     return vertices, faces
 
 try:
@@ -74,24 +82,25 @@ def update(frame):
     return collection,
 
 try:
-    # Create and save animation with error handling
+    # Create and save animation
     anim = animation.FuncAnimation(
         fig, update, frames=180, interval=50, blit=True
     )
     
-    # Save with multiple attempts if needed
-    for attempt in range(3):
-        try:
-            anim.save(
-                'hologram_humanoid.gif',
-                writer='pillow',
-                fps=30,
-                savefig_kwargs={'facecolor': 'black'}
-            )
-            break
-        except Exception as e:
-            print(f"Attempt {attempt + 1} failed: {e}")
-            if attempt == 2:
-                raise
+    output_file = 'hologram_humanoid.gif'
+    anim.save(
+        output_file,
+        writer='pillow',
+        fps=30,
+        savefig_kwargs={'facecolor': 'black'}
+    )
+    
+    # Verify file was created
+    if not os.path.exists(output_file):
+        raise FileNotFoundError(f"Failed to create {output_file}")
+        
+except Exception as e:
+    print(f"Error during animation generation: {e}")
+    raise
 finally:
     plt.close()
