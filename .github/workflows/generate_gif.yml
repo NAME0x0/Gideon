@@ -29,17 +29,17 @@ jobs:
       - name: Generate Female Face Hologram GIF
         run: |
           python -X dev generate_humanoid_hologram.py
-          if [ ! -f female_face_hologram.gif ]; then
+          if [ ! -f female_face_layers.gif ]; then
             echo "Error: GIF file was not created"
             exit 1
           fi
 
       - name: Commit and push updated GIF
         run: |
-          if [ -f female_face_hologram.gif ]; then
+          if [ -f female_face_layers.gif ]; then
             git config --global user.email "github-actions[bot]@users.noreply.github.com"
             git config --global user.name "github-actions[bot]"
-            git add female_face_hologram.gif
+            git add female_face_layers.gif
             git commit -m "Update female face hologram animation" || echo "No changes to commit"
             git push origin main || echo "No changes to push"
           else

@@ -3,81 +3,97 @@ import matplotlib.pyplot as plt
 from matplotlib import animation
 import os
 
-def gaussian(x, y, x0, y0, amplitude, sigma):
-    """
-    Returns a Gaussian function value for the point (x,y).
-    amplitude: height (positive) or depth (negative) of the feature.
-    sigma: controls the spread; smaller values yield sharper features.
-    """
-    return amplitude * np.exp(-(((x - x0)**2 + (y - y0)**2) / sigma))
+# This approach draws inspiration from layered morphable models and particle–based evolution,
+# as described in advanced research papers on facial modeling.
+# We construct a 3D face by stacking horizontal 2D slices defined in polar coordinates.
 
-# Define the face grid dimensions
-x = np.linspace(-0.8, 0.8, 300)
-y = np.linspace(-1.3, 1.3, 400)
-X, Y = np.meshgrid(x, y)
+# Number of vertical layers and angular resolution per layer
+num_layers = 40       # More layers yield finer vertical detail.
+num_points = 150      # Angular resolution for each layer.
 
-# Define an elliptical mask to represent the face outline (golden ratio based)
-mask = (X / 0.8)**2 + (Y / 1.3)**2 <= 1
+# Vertical coordinate: z ranges from chin (-1) to forehead (1)
+z_layers = np.linspace(-1, 1, num_layers)
+theta = np.linspace(0, 2*np.pi, num_points)
+Theta, Z = np.meshgrid(theta, z_layers)
 
-# Start with a flat base surface
-Z = np.zeros_like(X)
+# Base radius function (inspired by golden ratio proportions):
+# We assume the maximum width is at mid-face (z = 0) and taper off smoothly.
+A_max = 0.9   # maximum half–width at mid–face.
+A_min = 0.5   # minimum half–width at chin/forehead.
+base_radius = A_max - (A_max - A_min) * (np.abs(Z))**2
 
-# Add detailed facial features using multiple Gaussian functions
-# Forehead bump (upper third)
-Z += gaussian(X, Y, 0.0, 0.8, 0.15, 0.05)
-# Eyes depressions: positioned symmetrically above the midline
-Z += gaussian(X, Y, -0.3, 0.4, -0.2, 0.02)
-Z += gaussian(X, Y,  0.3, 0.4, -0.2, 0.02)
-# Nose bump in the central region
-Z += gaussian(X, Y, 0.0, 0.1, 0.25, 0.03)
-# Mouth depression (lower third)
-Z += gaussian(X, Y, 0.0, -0.3, -0.3, 0.05)
-# Chin depression for a defined jawline
-Z += gaussian(X, Y, 0.0, -0.8, -0.15, 0.05)
-# Cheek bumps to enhance facial contour
-Z += gaussian(X, Y, -0.5, 0.0, 0.1, 0.08)
-Z += gaussian(X, Y,  0.5, 0.0, 0.1, 0.08)
+# Define a function to modify the radius for each layer based on both theta and z.
+def feature_modulation(theta, z):
+    mod = 0.0
+    # Eyes: create depressions at about z ~ 0.4.
+    # We place the eyes symmetrically around the horizontal axis.
+    # Left eye: centered near theta ~ 2.2 rad, right eye: near theta ~ 4.1 rad.
+    mod += -0.15 * np.exp(-((theta - 2.2)**2)/0.05 - ((z - 0.4)**2)/0.02)
+    mod += -0.15 * np.exp(-((theta - 4.1)**2)/0.05 - ((z - 0.4)**2)/0.02)
+    
+    # Nose: a central protrusion at z ~ 0.0, affecting a broad angular region.
+    mod += 0.12 * np.exp(-((theta - np.pi)**2)/0.3 - ((z - 0.0)**2)/0.03)
+    
+    # Mouth: a depression at about z ~ -0.3, centered around theta ~ np.pi.
+    mod += -0.18 * np.exp(-((theta - np.pi)**2)/0.3 - ((z + 0.3)**2)/0.03)
+    
+    # Cheeks: subtle bumps near z ~ 0.0 for added contour,
+    # one on each side (approximately at theta ~ 1.0 and theta ~ 5.3).
+    mod += 0.08 * np.exp(-((theta - 1.0)**2)/0.1 - ((z - 0.0)**2)/0.02)
+    mod += 0.08 * np.exp(-((theta - 5.3)**2)/0.1 - ((z - 0.0)**2)/0.02)
+    
+    # Forehead: a gentle bump at z ~ 0.8 over most angles.
+    mod += 0.06 * np.exp(-((z - 0.8)**2)/0.04)
+    
+    # Chin: a slight depression at z ~ -0.9.
+    mod += -0.05 * np.exp(-((z + 0.9)**2)/0.04)
+    
+    return mod
 
-# Set values outside the face mask to NaN so they are not plotted
-Z[~mask] = np.nan
+# Compute the total radial distance for each (z, theta)
+R = base_radius + feature_modulation(Theta, Z)
 
-# Set up the figure and 3D axes with a dark (holographic) background
+# Convert from polar to Cartesian coordinates
+X = R * np.cos(Theta)
+Y = R * np.sin(Theta)
+# Z remains the same from the layering
+
+# Set up the figure and 3D axes with a dark, holographic background
 fig = plt.figure(figsize=(10, 10), facecolor='black')
 ax = fig.add_subplot(111, projection='3d')
 ax.set_facecolor('black')
 ax.axis('off')
 
-# Use a colormap based on the Z values to simulate shading and depth
-norm = plt.Normalize(np.nanmin(Z), np.nanmax(Z))
+# Create a colormap based on the z coordinate (or the computed R) to simulate depth and shading.
+norm = plt.Normalize(Z.min(), Z.max())
 facecolors = plt.cm.coolwarm(norm(Z))
 
-# Plot the surface
+# Plot the 3D surface using the stacked layers
 surf = ax.plot_surface(X, Y, Z, facecolors=facecolors, rstride=1, cstride=1,
                        linewidth=0, antialiased=True)
 
-# Set initial view parameters and axis limits for a balanced, frontal view
-ax.view_init(elev=20, azim=0)
-ax.set_box_aspect([1, 1, 1])
-ax.set_xlim([-0.8, 0.8])
-ax.set_ylim([-1.3, 1.3])
-ax.set_zlim([np.nanmin(Z) - 0.1, np.nanmax(Z) + 0.1])
+# Set initial view parameters and axis limits for a balanced frontal presentation
+ax.view_init(elev=25, azim=0)
+ax.set_box_aspect([1,1,1])
+ax.set_xlim([-1, 1])
+ax.set_ylim([-1, 1])
+ax.set_zlim([-1, 1])
 
 def update(frame):
-    # Clear the previous surface and update the view for a subtle rotation
+    # For the animation, apply a gentle rotation while preserving the frontal view.
     ax.collections.clear()
-    ax.view_init(elev=20, azim=frame)
+    ax.view_init(elev=25, azim=frame)
     facecolors = plt.cm.coolwarm(norm(Z))
     ax.plot_surface(X, Y, Z, facecolors=facecolors, rstride=1, cstride=1,
                     linewidth=0, antialiased=True)
     return ax,
 
 try:
-    # Animate with a narrow rotation range to keep the face frontal
+    # Animate a subtle rotation from -30° to 30° azimuth.
     anim = animation.FuncAnimation(fig, update, frames=np.linspace(-30, 30, 60),
                                    interval=50, blit=False)
-    output_file = 'female_face_hologram.gif'
-    anim.save(output_file, writer='pillow', fps=30,
-              savefig_kwargs={'facecolor': 'black'})
+    output_file = 'female_face_layers.gif'
+    anim.save(output_file, writer='pillow', fps=30, savefig_kwargs={'facecolor': 'black'})
     if not os.path.exists(output_file):
         raise FileNotFoundError(f"Failed to create {output_file}")
 except Exception as e:
