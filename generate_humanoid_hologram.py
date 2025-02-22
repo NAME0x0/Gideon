@@ -1,127 +1,75 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib import animation
 import os
-import mpl_toolkits.mplot3d.art3d as art3d
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-def custom_do_3d_projection(self):
-    try:
-        retval = self._original_do_3d_projection()
-    except Exception as e:
-        print(f"Error during projection: {e}")
-        try:
-            facecolors = self.get_facecolors() if hasattr(self, 'get_facecolors') else None
-        except Exception:
-            facecolors = None
-        try:
-            edgecolors = self.get_edgecolors() if hasattr(self, 'get_edgecolors') else None
-        except Exception:
-            edgecolors = None
-        return ([], [], facecolors, edgecolors, None)
-    # Ensure retval has 5 elements by padding missing values
-    if isinstance(retval, tuple) and len(retval) < 5:
-        ret0 = retval[0] if len(retval) >= 1 else []
-        ret1 = retval[1] if len(retval) >= 2 else []
-        try:
-            facecolors2d = self._facecolors2d if hasattr(self, '_facecolors2d') else (self.get_facecolors() if hasattr(self, 'get_facecolors') else None)
-        except Exception:
-            facecolors2d = self.get_facecolors() if hasattr(self, 'get_facecolors') else None
-        try:
-            edgecolors2d = self._edgecolors2d if hasattr(self, '_edgecolors2d') else (self.get_edgecolors() if hasattr(self, 'get_edgecolors') else None)
-        except Exception:
-            edgecolors2d = self.get_edgecolors() if hasattr(self, 'get_facecolors') else None
-        idxs = None
-        retval = (ret0, ret1, facecolors2d, edgecolors2d, idxs)
-    return retval
-
-# Override the original method
-art3d.Poly3DCollection._original_do_3d_projection = art3d.Poly3DCollection.do_3d_projection
-art3d.Poly3DCollection.do_3d_projection = custom_do_3d_projection
-
-def create_female_face_mesh():
-    # Create a simple elliptical face outline
-    t = np.linspace(0, 2*np.pi, 20, endpoint=False)
-    a = 1.0   # horizontal radius
-    b = 1.3   # vertical radius for a slightly elongated face
-    outer = np.column_stack((a * np.cos(t), b * np.sin(t), np.zeros_like(t)))
-    center = np.array([[0, 0, 0]])  # center vertex
-    vertices = np.vstack((center, outer))
-    # Triangulate using a fan from the center
+def create_math_face_mesh():
+    # Create a mesh grid over a square domain
+    x = np.linspace(-1.5, 1.5, 40)
+    y = np.linspace(-1.5, 1.5, 40)
+    X, Y = np.meshgrid(x, y)
+    # Base dome for the face
+    Z = 0.2 * np.exp(-((X)**2 + (Y)**2) / 1.0)
+    # Eyes: depressions (left and right)
+    for (dx, dy) in [(-0.5, 0.3), (0.5, 0.3)]:
+        Z -= 0.1 * np.exp(-(((X - dx)**2 + (Y - dy)**2) / 0.1))
+    # Mouth: depression at lower center
+    Z -= 0.07 * np.exp(-((X)**2 + (Y + 0.5)**2) / 0.1)
+    
+    # Flatten grid into vertices
+    vertices = np.column_stack((X.flatten(), Y.flatten(), Z.flatten()))
+    nrows, ncols = X.shape
     faces = []
-    n = len(vertices)
-    for i in range(1, n-1):
-        faces.append([0, i, i+1])
-    faces.append([0, n-1, 1])
-    vertices = vertices.astype(np.float32)
-    faces = np.array(faces, dtype=np.int32)
-    # Add slight depth variation for 3D effect
-    vertices[:,2] = 0.1 + 0.05 * np.sin(np.linspace(0, 2*np.pi, n))
-    return vertices, faces
+    # Create faces (two triangles per grid cell)
+    for i in range(nrows - 1):
+        for j in range(ncols - 1):
+            idx = i * ncols + j
+            faces.append([idx, idx + 1, idx + ncols])
+            faces.append([idx + 1, idx + ncols + 1, idx + ncols])
+    return vertices, np.array(faces, dtype=np.int32)
 
-# Use our own generated female face mesh instead of loading an .obj file
-vertices, faces = create_female_face_mesh()
+# Generate the mathematical face mesh
+vertices, faces = create_math_face_mesh()
 
-# Normalize vertices to [-1, 1] range
+# Normalize vertices to center and scale to [-1, 1]
 vertices = vertices - np.mean(vertices, axis=0)
 max_range = np.max(np.abs(vertices))
 vertices = vertices / max_range
 
-# Create figure
+# Create figure and 3D axes
 fig = plt.figure(figsize=(10, 10), facecolor='black')
 ax = fig.add_subplot(111, projection='3d')
-ax.set_facecolor('black')
 ax.axis('off')
-
-# Create the collection with a single triangle first
-verts = vertices[faces[0:1]]
-collection = Poly3DCollection(verts, animated=True)
-collection.set_edgecolor('cyan')
-collection.set_facecolor('none')
-collection.set_alpha(0.3)
-ax.add_collection3d(collection)
-
-# Set the plot limits
+ax.set_facecolor('black')
 ax.set_xlim([-1.5, 1.5])
 ax.set_ylim([-1.5, 1.5])
 ax.set_zlim([-1.5, 1.5])
 
+# Create a Poly3DCollection for the mesh
+# (Start with a placeholder using the first face)
+collection = Poly3DCollection(vertices[faces[0:1]], animated=True,
+                              edgecolor='cyan', facecolor='none', alpha=0.3)
+ax.add_collection3d(collection)
+
 def update(frame):
-    # Rotate vertices
+    # Rotate the mesh about the z-axis
     theta = np.radians(frame)
-    c, s = np.cos(theta), np.sin(theta)
-    rotation = np.array([
-        [c, -s, 0],
-        [s, c, 0],
-        [0, 0, 1]
-    ])
-    
-    rotated_verts = vertices @ rotation
-    collection.set_verts([rotated_verts[face] for face in faces])
-    
-    # Flickering effect
-    alpha = 0.3 + 0.1 * np.sin(frame * 0.1)
-    collection.set_alpha(alpha)
+    rotation = np.array([[np.cos(theta), -np.sin(theta), 0],
+                         [np.sin(theta),  np.cos(theta), 0],
+                         [0,              0,             1]])
+    rotated = vertices @ rotation
+    collection.set_verts([rotated[face] for face in faces])
+    # Add a flickering effect by varying alpha
+    collection.set_alpha(0.3 + 0.1 * np.sin(frame * 0.1))
     return collection,
 
 try:
-    # Create and save animation
-    anim = animation.FuncAnimation(
-        fig, update, frames=180, interval=50, blit=True
-    )
-    
+    anim = animation.FuncAnimation(fig, update, frames=180, interval=50, blit=True)
     output_file = 'hologram_humanoid.gif'
-    anim.save(
-        output_file,
-        writer='pillow',
-        fps=30,
-        savefig_kwargs={'facecolor': 'black'}
-    )
-    
-    # Verify file was created
+    anim.save(output_file, writer='pillow', fps=30, savefig_kwargs={'facecolor': 'black'})
     if not os.path.exists(output_file):
         raise FileNotFoundError(f"Failed to create {output_file}")
-        
 except Exception as e:
     print(f"Error during animation generation: {e}")
     raise
