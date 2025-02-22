@@ -4,6 +4,22 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib import animation
 import pywavefront
 import os
+import mpl_toolkits.mplot3d.art3d as art3d
+
+def custom_do_3d_projection(self):
+    try:
+        retval = self._original_do_3d_projection()
+    except Exception as e:
+        print(f"Error during projection: {e}")
+        return ([], [], None, None, None)
+    if isinstance(retval, tuple) and len(retval) < 5:
+        # Pad the tuple with None to reach 5 elements
+        retval = retval + (None,) * (5 - len(retval))
+    return retval
+
+# Override the original method
+art3d.Poly3DCollection._original_do_3d_projection = art3d.Poly3DCollection.do_3d_projection
+art3d.Poly3DCollection.do_3d_projection = custom_do_3d_projection
 
 def create_default_face_mesh():
     # Create a triangulated pyramid as fallback
