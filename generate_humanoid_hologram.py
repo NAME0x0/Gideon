@@ -3,120 +3,85 @@ import matplotlib.pyplot as plt
 from matplotlib import animation
 import os
 
-# Golden ratio constant (approximately 1.618)
-phi = 1.618
-
-def modify_face(x, y, z):
+def gaussian(x, y, x0, y0, amplitude, sigma):
     """
-    Apply local deformations using a list of control points.
-    Each control point is defined as:
-      (x_center, y_center, z_center, strength, width)
-    A positive strength creates a bump; a negative strength creates a depression.
+    Returns a Gaussian function value for the point (x,y).
+    amplitude: height (positive) or depth (negative) of the feature.
+    sigma: controls the spread; smaller values yield sharper features.
     """
-    control_points = [
-        # Eye region (left eye: multiple points for smooth depression)
-        (-0.25,  0.35,  0.1,  -0.3, 0.005),
-        (-0.20,  0.35,  0.1,  -0.3, 0.005),
-        # Eye region (right eye)
-        ( 0.25,  0.35,  0.1,  -0.3, 0.005),
-        ( 0.20,  0.35,  0.1,  -0.3, 0.005),
-        # Nose region (bump)
-        ( 0.0,   0.0,   0.2,   0.4, 0.01),
-        ( 0.0,   0.05,  0.2,   0.4, 0.01),
-        # Mouth region (depression)
-        ( 0.0,  -0.3,   0.0,  -0.4, 0.01),
-        (-0.1,  -0.3,   0.0,  -0.4, 0.01),
-        ( 0.1,  -0.3,   0.0,  -0.4, 0.01),
-        # Cheekbones (subtle bump to accentuate facial structure)
-        (-0.5,   0.1,   0.1,   0.2, 0.02),
-        ( 0.5,   0.1,   0.1,   0.2, 0.02),
-        # Chin region (depression)
-        ( 0.0,  -0.5,  -0.2,  -0.3, 0.015),
-        # Forehead (bump)
-        ( 0.0,   0.5,   0.3,   0.2, 0.015)
-    ]
-    
-    z_mod = 0.0
-    point = np.array([x, y, z])
-    for cp in control_points:
-        cp_point = np.array([cp[0], cp[1], cp[2]])
-        strength = cp[3]
-        width = cp[4]
-        d = np.linalg.norm(point - cp_point)
-        # Gaussian contribution for this control point
-        z_mod += strength * np.exp(-d**2 / width)
-    return z_mod
+    return amplitude * np.exp(-(((x - x0)**2 + (y - y0)**2) / sigma))
 
-def create_parametric_face(u, v):
-    """
-    Create a parametric face surface based on a deformed ellipsoid.
-    The base ellipsoid has dimensions defined by:
-       a (width), b (depth), c (height)
-    """
-    a = 0.8   # horizontal (width) radius
-    b = 0.8   # depth radius
-    c = 1.3   # vertical (height) radius
+# Define the face grid dimensions
+x = np.linspace(-0.8, 0.8, 300)
+y = np.linspace(-1.3, 1.3, 400)
+X, Y = np.meshgrid(x, y)
 
-    # Parametric equations for an ellipsoid using spherical coordinates:
-    x = a * np.cos(u) * np.cos(v)
-    y = b * np.sin(u) * np.cos(v)
-    z0 = c * np.sin(v)
-    
-    # Apply local deformations to create detailed facial features
-    z = np.empty_like(z0)
-    rows, cols = z0.shape
-    for i in range(rows):
-        for j in range(cols):
-            z[i, j] = z0[i, j] + modify_face(x[i, j], y[i, j], z0[i, j])
-    return x, y, z
+# Define an elliptical mask to represent the face outline (golden ratio based)
+mask = (X / 0.8)**2 + (Y / 1.3)**2 <= 1
 
-# Set up the figure and 3D axes with a dark background for a holographic look
+# Start with a flat base surface
+Z = np.zeros_like(X)
+
+# Add detailed facial features using multiple Gaussian functions
+# Forehead bump (upper third)
+Z += gaussian(X, Y, 0.0, 0.8, 0.15, 0.05)
+# Eyes depressions: positioned symmetrically above the midline
+Z += gaussian(X, Y, -0.3, 0.4, -0.2, 0.02)
+Z += gaussian(X, Y,  0.3, 0.4, -0.2, 0.02)
+# Nose bump in the central region
+Z += gaussian(X, Y, 0.0, 0.1, 0.25, 0.03)
+# Mouth depression (lower third)
+Z += gaussian(X, Y, 0.0, -0.3, -0.3, 0.05)
+# Chin depression for a defined jawline
+Z += gaussian(X, Y, 0.0, -0.8, -0.15, 0.05)
+# Cheek bumps to enhance facial contour
+Z += gaussian(X, Y, -0.5, 0.0, 0.1, 0.08)
+Z += gaussian(X, Y,  0.5, 0.0, 0.1, 0.08)
+
+# Set values outside the face mask to NaN so they are not plotted
+Z[~mask] = np.nan
+
+# Set up the figure and 3D axes with a dark (holographic) background
 fig = plt.figure(figsize=(10, 10), facecolor='black')
 ax = fig.add_subplot(111, projection='3d')
 ax.set_facecolor('black')
 ax.axis('off')
 
-# Limit the parametric range to only the front of the ellipsoid
-# u in [-π/2, π/2] ensures we only generate the frontal half.
-u = np.linspace(-np.pi/2, np.pi/2, 200)
-v = np.linspace(-np.pi/2, np.pi/2, 200)
-U, V = np.meshgrid(u, v)
-X, Y, Z = create_parametric_face(U, V)
-
-# Set up a colormap based on the Z values to simulate lighting and depth
-norm = plt.Normalize(Z.min(), Z.max())
+# Use a colormap based on the Z values to simulate shading and depth
+norm = plt.Normalize(np.nanmin(Z), np.nanmax(Z))
 facecolors = plt.cm.coolwarm(norm(Z))
 
-# Plot the initial surface
-surf = ax.plot_surface(X, Y, Z, facecolors=facecolors, shade=False,
+# Plot the surface
+surf = ax.plot_surface(X, Y, Z, facecolors=facecolors, rstride=1, cstride=1,
                        linewidth=0, antialiased=True)
 
 # Set initial view parameters and axis limits for a balanced, frontal view
-ax.view_init(elev=10, azim=0)
+ax.view_init(elev=20, azim=0)
 ax.set_box_aspect([1, 1, 1])
-ax.set_xlim([-1.2, 1.2])
-ax.set_ylim([-1.2, 1.2])
-ax.set_zlim([-1.2, 1.2])
+ax.set_xlim([-0.8, 0.8])
+ax.set_ylim([-1.3, 1.3])
+ax.set_zlim([np.nanmin(Z) - 0.1, np.nanmax(Z) + 0.1])
 
 def update(frame):
-    # Update the view angle for a slight rotation while keeping the face frontal
-    ax.collections.clear()  # Remove the previous surface
-    ax.view_init(elev=10, azim=frame)
+    # Clear the previous surface and update the view for a subtle rotation
+    ax.collections.clear()
+    ax.view_init(elev=20, azim=frame)
     facecolors = plt.cm.coolwarm(norm(Z))
-    surf = ax.plot_surface(X, Y, Z, facecolors=facecolors, shade=False,
-                           linewidth=0, antialiased=True)
-    ax.set_box_aspect([1, 1, 1])
-    return surf,
+    ax.plot_surface(X, Y, Z, facecolors=facecolors, rstride=1, cstride=1,
+                    linewidth=0, antialiased=True)
+    return ax,
 
 try:
-    # Restrict rotation to a narrow range (from -30° to 30°) to maintain a frontal perspective
-    anim = animation.FuncAnimation(fig, update, frames=np.linspace(-30, 30, 60), interval=50, blit=False)
-    output_file = 'hologram_humanoid.gif'
-    anim.save(output_file, writer='pillow', fps=30, savefig_kwargs={'facecolor': 'black'})
+    # Animate with a narrow rotation range to keep the face frontal
+    anim = animation.FuncAnimation(fig, update, frames=np.linspace(-30, 30, 60),
+                                   interval=50, blit=False)
+    output_file = 'female_face_hologram.gif'
+    anim.save(output_file, writer='pillow', fps=30,
+              savefig_kwargs={'facecolor': 'black'})
     if not os.path.exists(output_file):
         raise FileNotFoundError(f"Failed to create {output_file}")
 except Exception as e:
-    print(f"Error during animation generation: {e}")
+    print("Error during animation generation:", e)
     raise
 finally:
     plt.close()

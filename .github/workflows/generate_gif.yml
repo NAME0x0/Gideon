@@ -1,11 +1,11 @@
-name: Generate Hologram GIF
+name: Generate Female Face Hologram GIF
 
 on:
   push:
     branches:
       - main
   schedule:
-    - cron: '0 0 * * *'  # Runs daily; adjust as needed
+    - cron: '0 0 * * *'  # Adjust schedule as needed
 
 jobs:
   build:
@@ -26,21 +26,21 @@ jobs:
           pip install matplotlib==3.5.2 numpy Pillow
           python -c "import matplotlib; print('Matplotlib version:', matplotlib.__version__)"
 
-      - name: Generate Hologram GIF
+      - name: Generate Female Face Hologram GIF
         run: |
           python -X dev generate_humanoid_hologram.py
-          if [ ! -f hologram_humanoid.gif ]; then
+          if [ ! -f female_face_hologram.gif ]; then
             echo "Error: GIF file was not created"
             exit 1
           fi
 
       - name: Commit and push updated GIF
         run: |
-          if [ -f hologram_humanoid.gif ]; then
+          if [ -f female_face_hologram.gif ]; then
             git config --global user.email "github-actions[bot]@users.noreply.github.com"
             git config --global user.name "github-actions[bot]"
-            git add hologram_humanoid.gif
-            git commit -m "Update hologram animation" || echo "No changes to commit"
+            git add female_face_hologram.gif
+            git commit -m "Update female face hologram animation" || echo "No changes to commit"
             git push origin main || echo "No changes to push"
           else
             echo "Error: GIF file not found"
