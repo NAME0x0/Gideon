@@ -10,12 +10,27 @@ def custom_do_3d_projection(self):
         retval = self._original_do_3d_projection()
     except Exception as e:
         print(f"Error during projection: {e}")
-        return ([], [], self.get_facecolor(), self.get_edgecolor(), None)
+        try:
+            facecolors = self.get_facecolor()
+        except Exception:
+            facecolors = None
+        try:
+            edgecolors = self.get_edgecolor()
+        except Exception:
+            edgecolors = None
+        return ([], [], facecolors, edgecolors, None)
+    # Ensure retval has 5 elements by padding missing values
     if isinstance(retval, tuple) and len(retval) < 5:
         ret0 = retval[0] if len(retval) >= 1 else []
         ret1 = retval[1] if len(retval) >= 2 else []
-        facecolors2d = self.get_facecolor() if hasattr(self, 'get_facecolor') else None
-        edgecolors2d = self.get_edgecolor() if hasattr(self, 'get_edgecolor') else None
+        try:
+            facecolors2d = self._facecolors2d
+        except AttributeError:
+            facecolors2d = self.get_facecolor() if hasattr(self, 'get_facecolor') else None
+        try:
+            edgecolors2d = self._edgecolors2d
+        except AttributeError:
+            edgecolors2d = self.get_edgecolor() if hasattr(self, 'get_edgecolor') else None
         idxs = None
         retval = (ret0, ret1, facecolors2d, edgecolors2d, idxs)
     return retval
