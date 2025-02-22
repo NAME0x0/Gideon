@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install matplotlib==3.5.2 numpy PyWavefront Pillow
+          pip install matplotlib==3.5.2 numpy Pillow
           python -c "import matplotlib; print('Matplotlib version:', matplotlib.__version__)"
 
       - name: Generate Hologram GIF
