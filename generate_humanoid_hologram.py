@@ -11,10 +11,14 @@ def custom_do_3d_projection(self):
         retval = self._original_do_3d_projection()
     except Exception as e:
         print(f"Error during projection: {e}")
-        return ([], [], None, None, None)
+        return ([], [], self.get_facecolor(), self.get_edgecolor(), None)
     if isinstance(retval, tuple) and len(retval) < 5:
-        # Pad the tuple with None to reach 5 elements
-        retval = retval + (None,) * (5 - len(retval))
+        ret0 = retval[0] if len(retval) >= 1 else []
+        ret1 = retval[1] if len(retval) >= 2 else []
+        facecolors2d = self.get_facecolor() if hasattr(self, 'get_facecolor') else None
+        edgecolors2d = self.get_edgecolor() if hasattr(self, 'get_edgecolor') else None
+        idxs = None
+        retval = (ret0, ret1, facecolors2d, edgecolors2d, idxs)
     return retval
 
 # Override the original method
@@ -47,8 +51,13 @@ try:
         vertices = np.array(scene.vertices)
         faces = []
         for mesh in scene.mesh_list:
-            faces.extend([list(face) for face in mesh.faces])
+            for face in mesh.faces:
+                if len(face) == 3:  # keep only triangles
+                    faces.append(face)
         faces = np.array(faces)
+        if len(faces) == 0:
+            print("No valid triangular faces found. Using default mesh.")
+            vertices, faces = create_default_face_mesh()
     else:
         vertices, faces = create_default_face_mesh()
 except Exception as e:
