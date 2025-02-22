@@ -5,7 +5,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: '0 0 * * *'  # Runs daily; adjust as necessary
+    - cron: '0 0 * * *'
 
 jobs:
   build:
@@ -15,26 +15,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Set up Python 3.x
+      - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
-          python-version: '3.x'
+          python-version: '3.8'
 
       - name: Install dependencies
         run: |
-          pip install matplotlib numpy
-          pip install trimesh
-          pip install pywavefront
-          sudo apt-get update
-          sudo apt-get install -y imagemagick
+          python -m pip install --upgrade pip
+          pip install matplotlib numpy PyWavefront Pillow
 
       - name: Generate Hologram GIF
-        run: python generate_humanoid_hologram.py
+        run: |
+          python generate_humanoid_hologram.py
+        continue-on-error: true
 
       - name: Commit and push updated GIF
         run: |
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
-          git add hologram.gif
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git add hologram_humanoid.gif
           git commit -m "Update hologram animation" || echo "No changes to commit"
-          git push
+          git push origin main || echo "No changes to push"

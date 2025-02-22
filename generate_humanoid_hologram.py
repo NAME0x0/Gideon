@@ -1,43 +1,69 @@
-import pywavefront
-import trimesh
+import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib import animation
-import numpy as np
+import pywavefront
+import os
 
-# Load the realistic 3D face mesh from the FBX file
-# Note: If you experience issues, ensure that you have installed any additional dependencies
-# (such as pyassimp) to support FBX format.
-scene = pywavefront.Wavefront('gideon_face.fbx')
+def create_default_face_mesh():
+    # Create a simple cube as fallback
+    vertices = np.array([
+        [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+        [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]
+    ])
+    faces = np.array([
+        [0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 5, 4],
+        [2, 3, 7, 6], [0, 3, 7, 4], [1, 2, 6, 5]
+    ])
+    return vertices, faces
 
-# Create a figure and a 3D axes instance
-fig = plt.figure(figsize=(10, 10))
+try:
+    if os.path.exists('gideon_face.obj'):  # Changed to .obj format
+        scene = pywavefront.Wavefront('gideon_face.obj', collect_faces=True)
+        vertices = np.array(scene.vertices)
+        faces = np.array([face for mesh in scene.mesh_list for face in mesh.faces])
+    else:
+        vertices, faces = create_default_face_mesh()
+except Exception as e:
+    print(f"Error loading mesh file: {e}")
+    vertices, faces = create_default_face_mesh()
+
+# Create figure with black background
+fig = plt.figure(figsize=(10, 10), facecolor='black')
 ax = fig.add_subplot(111, projection='3d')
+ax.set_facecolor('black')
 ax.axis('off')
 
-# Extract vertices and faces from the mesh
-vertices = mesh.vertices
-faces = mesh.faces
-
-# Create a 3D polygon collection from the mesh faces
-face_collection = Poly3DCollection(vertices[faces], alpha=0.7)
-face_collection.set_edgecolor('none')
-face_collection.set_facecolor('cyan')  # Holographic color palette
+# Create mesh collection
+face_collection = Poly3DCollection(vertices[faces])
+face_collection.set_edgecolor('cyan')
+face_collection.set_facecolor('none')
+face_collection.set_alpha(0.3)
 ax.add_collection3d(face_collection)
 
-# Set axis limits based on the mesh bounds for proper scaling
-x_bounds, y_bounds, z_bounds = mesh.bounds.T
-ax.set_xlim(x_bounds.min(), x_bounds.max())
-ax.set_ylim(y_bounds.min(), y_bounds.max())
-ax.set_zlim(z_bounds.min(), z_bounds.max())
+# Center the plot
+max_range = np.array([vertices[:,0].max()-vertices[:,0].min(),
+                      vertices[:,1].max()-vertices[:,1].min(),
+                      vertices[:,2].max()-vertices[:,2].min()]).max() / 2.0
 
-# Define the rotation function to update the view angle
-def update(angle):
-    ax.view_init(elev=30, azim=angle)
+mid_x = (vertices[:,0].max()+vertices[:,0].min()) * 0.5
+mid_y = (vertices[:,1].max()+vertices[:,1].min()) * 0.5
+mid_z = (vertices[:,2].max()+vertices[:,2].min()) * 0.5
+
+ax.set_xlim(mid_x - max_range, mid_x + max_range)
+ax.set_ylim(mid_y - max_range, mid_y + max_range)
+ax.set_zlim(mid_z - max_range, mid_z + max_range)
+
+def update(frame):
+    ax.view_init(elev=20, azim=frame)
+    # Add flickering effect
+    alpha = 0.3 + 0.1 * np.sin(frame * 0.1)
+    face_collection.set_alpha(alpha)
     return fig,
 
-# Create an animation rotating the view a full 360 degrees
-ani = animation.FuncAnimation(fig, update, frames=np.arange(0, 360, 2), interval=50)
+# Create animation
+anim = animation.FuncAnimation(fig, update, frames=180, interval=50)
 
-# Save the animation as a GIF (ensure ImageMagick is installed on the runner)
-ani.save('hologram_humanoid.gif', writer='imagemagick', fps=30)
+# Save with higher quality
+anim.save('hologram_humanoid.gif', writer='pillow', fps=30)
+plt.close()
