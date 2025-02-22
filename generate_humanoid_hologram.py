@@ -1,3 +1,4 @@
+import pywavefront
 import trimesh
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
@@ -7,7 +8,7 @@ import numpy as np
 # Load the realistic 3D face mesh from the FBX file
 # Note: If you experience issues, ensure that you have installed any additional dependencies
 # (such as pyassimp) to support FBX format.
-mesh = trimesh.load('gideon_face.fbx', file_type='fbx')
+scene = pywavefront.Wavefront('gideon_face.fbx')
 
 # Create a figure and a 3D axes instance
 fig = plt.figure(figsize=(10, 10))
