@@ -4,24 +4,23 @@ from matplotlib import animation
 import os
 
 def create_parametric_face(u, v):
-    # Base ellipsoid for head shape
-    x = 1.5 * np.cos(u) * np.cos(v)
-    y = np.sin(u) * np.cos(v)
-    z = 0.8 * np.sin(v)
+    # Base ellipsoid for head shape (flattened and elongated)
+    x = np.cos(u)*np.cos(v)
+    y = 0.8*np.sin(u)*np.cos(v)
+    z = 0.7*np.sin(v)
     
-    # Add facial features through mathematical deformations
-    # Nose bridge and tip
-    nose = 0.2 * np.exp(-((x)**2 + (y-0.5)**2) / 0.05) * (z > -0.2) * (z < 0.2)
+    # Nose: a small bump in the center upper region
+    mask_nose = np.exp(-(((x)**2 + (y-0.1)**2)/0.02))
+    z = z + 0.15 * mask_nose
     
-    # Eye sockets
-    left_eye = -0.1 * np.exp(-((x+0.4)**2 + (y-0.1)**2) / 0.02) * (z > -0.1) * (z < 0.1)
-    right_eye = -0.1 * np.exp(-((x-0.4)**2 + (y-0.1)**2) / 0.02) * (z > -0.1) * (z < 0.1)
+    # Eyes: depressions on left and right
+    mask_eye_left = np.exp(-(((x+0.4)**2 + (y-0.25)**2)/0.01))
+    mask_eye_right = np.exp(-(((x-0.4)**2 + (y-0.25)**2)/0.01))
+    z = z - 0.12 * (mask_eye_left + mask_eye_right)
     
-    # Mouth curve
-    mouth = -0.1 * np.exp(-((x)**2 + (y+0.3)**2) / 0.04) * (z > -0.1) * (z < 0.1)
-    
-    # Combine all features
-    z = z + nose + left_eye + right_eye + mouth
+    # Mouth: a depression lower down
+    mask_mouth = np.exp(-((x)**2 + (y+0.3)**2)/0.02)
+    z = z - 0.15 * mask_mouth
     
     return x, y, z
 
@@ -37,47 +36,32 @@ v = np.linspace(-np.pi/2, np.pi/2, 100)
 U, V = np.meshgrid(u, v)
 X, Y, Z = create_parametric_face(U, V)
 
-# Initial surface plot
-surf = ax.plot_surface(X, Y, Z, color='cyan', alpha=0.3, 
-                      linewidth=0.5, antialiased=True)
+# Initial surface plot with desired styling
+surf = ax.plot_surface(X, Y, Z, color='cyan', alpha=0.35, 
+                         linewidth=0.5, antialiased=True)
 
-# Set viewing angle and limits
+# Set viewing angle and aspect ratio
 ax.view_init(elev=0, azim=0)
-ax.set_box_aspect([1, 1, 1])
+ax.set_box_aspect([1,1,1])
 
 def update(frame):
-    # Clear previous frame
+    # Clear previous collections to update the surface properly
     ax.collections.clear()
-    
-    # Rotate the view
     ax.view_init(elev=20, azim=frame)
     
-    # Update surface with flickering effect
-    alpha = 0.3 + 0.1 * np.sin(frame * 0.1)
-    surf = ax.plot_surface(X, Y, Z, color='cyan', alpha=alpha,
-                          linewidth=0.5, antialiased=True)
-    
-    # Ensure proper aspect ratio
-    ax.set_box_aspect([1, 1, 1])
+    # Apply a slight flickering effect on alpha
+    alpha = 0.35 + 0.1 * np.sin(frame * 0.1)
+    surf = ax.plot_surface(X, Y, Z, color='cyan', alpha=alpha, 
+                           linewidth=0.5, antialiased=True)
+    ax.set_box_aspect([1,1,1])
     return surf,
 
 try:
-    # Create and save animation
-    anim = animation.FuncAnimation(
-        fig, update, frames=180, interval=50, blit=False
-    )
-    
+    anim = animation.FuncAnimation(fig, update, frames=180, interval=50, blit=False)
     output_file = 'hologram_humanoid.gif'
-    anim.save(
-        output_file,
-        writer='pillow',
-        fps=30,
-        savefig_kwargs={'facecolor': 'black'}
-    )
-    
+    anim.save(output_file, writer='pillow', fps=30, savefig_kwargs={'facecolor':'black'})
     if not os.path.exists(output_file):
         raise FileNotFoundError(f"Failed to create {output_file}")
-        
 except Exception as e:
     print(f"Error during animation generation: {e}")
     raise

@@ -26,6 +26,7 @@ jobs:
           pip install matplotlib==3.5.2 numpy Pillow
           python -c "import matplotlib; print('Matplotlib version:', matplotlib.__version__)"
 
+
       - name: Generate Hologram GIF
         run: |
           python -X dev generate_humanoid_hologram.py
