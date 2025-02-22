@@ -4,8 +4,10 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib import animation
 import numpy as np
 
-# Load the realistic 3D face mesh from the OBJ file
-mesh = trimesh.load('gideon_face.obj')
+# Load the realistic 3D face mesh from the FBX file
+# Note: If you experience issues, ensure that you have installed any additional dependencies
+# (such as pyassimp) to support FBX format.
+mesh = trimesh.load('gideon_face.fbx', file_type='fbx')
 
 # Create a figure and a 3D axes instance
 fig = plt.figure(figsize=(10, 10))
@@ -19,7 +21,7 @@ faces = mesh.faces
 # Create a 3D polygon collection from the mesh faces
 face_collection = Poly3DCollection(vertices[faces], alpha=0.7)
 face_collection.set_edgecolor('none')
-face_collection.set_facecolor('cyan')  # Use a cool, holographic color palette
+face_collection.set_facecolor('cyan')  # Holographic color palette
 ax.add_collection3d(face_collection)
 
 # Set axis limits based on the mesh bounds for proper scaling
