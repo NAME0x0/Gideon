@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib import animation
-import pywavefront
 import os
 import mpl_toolkits.mplot3d.art3d as art3d
 
@@ -25,44 +24,28 @@ def custom_do_3d_projection(self):
 art3d.Poly3DCollection._original_do_3d_projection = art3d.Poly3DCollection.do_3d_projection
 art3d.Poly3DCollection.do_3d_projection = custom_do_3d_projection
 
-def create_default_face_mesh():
-    # Create a triangulated pyramid as fallback
-    vertices = np.array([
-        [0, 0, 2],    # top
-        [-1, -1, 0],  # base points
-        [1, -1, 0],
-        [1, 1, 0],
-        [-1, 1, 0]
-    ])
-    # All faces as triangles
-    faces = np.array([
-        [0, 1, 2],  # side triangles
-        [0, 2, 3],
-        [0, 3, 4],
-        [0, 4, 1],
-        [1, 2, 3],  # base triangles
-        [1, 3, 4]
-    ], dtype=np.int32)
+def create_female_face_mesh():
+    # Create a simple elliptical face outline
+    t = np.linspace(0, 2*np.pi, 20, endpoint=False)
+    a = 1.0   # horizontal radius
+    b = 1.3   # vertical radius for a slightly elongated face
+    outer = np.column_stack((a * np.cos(t), b * np.sin(t), np.zeros_like(t)))
+    center = np.array([[0, 0, 0]])  # center vertex
+    vertices = np.vstack((center, outer))
+    # Triangulate using a fan from the center
+    faces = []
+    n = len(vertices)
+    for i in range(1, n-1):
+        faces.append([0, i, i+1])
+    faces.append([0, n-1, 1])
+    vertices = vertices.astype(np.float32)
+    faces = np.array(faces, dtype=np.int32)
+    # Add slight depth variation for 3D effect
+    vertices[:,2] = 0.1 + 0.05 * np.sin(np.linspace(0, 2*np.pi, n))
     return vertices, faces
 
-try:
-    if os.path.exists('gideon_face.obj'):
-        scene = pywavefront.Wavefront('gideon_face.obj', collect_faces=True)
-        vertices = np.array(scene.vertices)
-        faces = []
-        for mesh in scene.mesh_list:
-            for face in mesh.faces:
-                if len(face) == 3:  # keep only triangles
-                    faces.append(face)
-        faces = np.array(faces)
-        if len(faces) == 0:
-            print("No valid triangular faces found. Using default mesh.")
-            vertices, faces = create_default_face_mesh()
-    else:
-        vertices, faces = create_default_face_mesh()
-except Exception as e:
-    print(f"Error loading mesh file: {e}")
-    vertices, faces = create_default_face_mesh()
+# Use our own generated female face mesh instead of loading an .obj file
+vertices, faces = create_female_face_mesh()
 
 # Normalize vertices to [-1, 1] range
 vertices = vertices - np.mean(vertices, axis=0)
