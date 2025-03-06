@@ -190,7 +190,7 @@ def main():
         args.output, 
         writer='pillow', 
         fps=args.fps, 
-        savefig_kwargs={'facecolor': 'black', 'dpi': args.quality}
+        savefig_kwargs={'facecolor': 'black'}
     )
     
     end_time = time.time()

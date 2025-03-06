@@ -150,7 +150,7 @@ anim.save(
     output_file, 
     writer='pillow', 
     fps=30, 
-    savefig_kwargs={'facecolor': 'black', 'dpi': 100}
+    savefig_kwargs={'facecolor': 'black'}
 )
 
 print(f"Animation saved to {output_file}")
