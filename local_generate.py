@@ -27,6 +27,7 @@ def main():
         import matplotlib.pyplot as plt
         from matplotlib import animation, colors, cm
         from matplotlib.colors import LinearSegmentedColormap
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
     except ImportError as e:
         print(f"Error: Missing required dependency: {e}")
         print("Please install required dependencies with:")
